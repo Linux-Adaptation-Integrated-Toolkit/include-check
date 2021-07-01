@@ -1,0 +1,116 @@
+#!/bin/bash
+sudo apt-file update > /dev/null
+#参数数量
+PARAM_NUM=$#
+#头文件所在目录的路径
+HEADER_FILE=
+#CPPFILE,.cpp的文件路径
+#INCPATH,-I参数
+
+
+display_help() {
+	echo "使用方式：deepin-scanlib [-I] .cpp"
+	echo -e "-I=头文件目录路径[,头文件目录路径]\t加载头文件所在目录的路径"
+	echo -e '-help\t显示此帮助'
+	exit 0
+}
+
+#检查.cpp参数是否正确
+check_cpp() {
+if [ ! -f "${CPPFILE}" ];then
+	echo "c++源文件不存在，请确认正确路径"
+	display_help
+fi
+}
+
+#检查-I参数是否正确,暂未实现
+check_i() {
+	INCPATHJ=${INCPATH#*-I=}
+	iarray=(${INCPATHJ//,/ })
+
+	for ivar in ${iarray[@]}
+	do
+		if [ ! -d ${ivar} ]; then
+			echo "错误，引用的头文件路径不存在: ${ivar}"
+			display_help
+		fi
+	done
+}
+
+#检查.cpp内的include内容
+check_include() {
+	include-what-you-use $CPPFILE > $CPPFILE.ldb 2>&1
+	SECSTR=$(cat $CPPFILE.ldb | grep "include" | awk '{print $2}')
+	if [ "${SECSTR}" = "" ];then
+		echo "未检测到头文件缺失，请检查其他部分代码,或开始编译"
+		exit 2
+	fi
+	
+	if [ "${SECSTR:0:1}" = '"'  ]; then
+		HEADER_FILE=$(echo $SECSTR | awk -F "\"" '{print $2}')
+	elif [ "${SECSTR:0:1}" = "'"  ]; then
+		HEADER_FILE=$(echo $SECSTR | awk -F "\'" '{print $2}')
+	elif [ "${SECSTR:0:1}" = "<"  ]; then
+		HEADER_FILE=$(echo $SECSTR | awk -F "<" '{print $2}' | awk -F ">" '{print $1}')
+	else	
+		echo "头文件引用不标准，请检查代码" && exit 1
+	fi
+}
+
+#修复依赖
+fix_include() {
+	#先检测系统是否已安装头文件
+	dpkg -S ${HEADER_FILE} 1> ${CPPFILE}.ldb2
+	MATSTR=$(cat ${CPPFILE}.ldb2)
+	if [ "${MATSTR}" = "" ];then
+		#系统未安装，从远程仓库搜寻
+		echo "该开发库未安装，正在尝试从仓库搜索"
+
+		(apt-file find ${HEADER_FILE} | grep "${HEADER_FILE}$") > ${CPPFILE}.ldb3
+		MATPKGS=$(cat ${CPPFILE}.ldb3)
+		#远程仓库未找到，提醒开发者自行寻找
+		if [ "$MATPKGS" = "" ]; then
+			echo "远程仓库亦未找到可用包，请自行搜索"
+			exit 5
+		fi
+		#远程仓库找得到，提示
+		echo ${MATPKGS}
+	else
+		#系统已安装，通知开发者路径
+		cat ${CPPFILE}.ldb2
+		echo "请从以上选项中，进行安装"
+	fi
+}
+
+#没有参数的情况
+if [ $# -eq 0 ];then
+	display_help
+fi
+
+#一个参数，只允许两个合法参数，.cpp和-help
+if [ $# -eq 1 ];then
+	if [ "$1" = "-help" ];then
+		display_help
+	else
+		CPPFILE=$1
+		check_cpp
+		check_include
+		fix_include
+	fi
+fi
+
+#两个参数，只允许合法参数形式及顺序为：-I= .cpp
+if [ $# -eq 2 ]; then
+  CPPFILE=$2
+	check_cpp
+	INCPATH=$1
+	check_i
+	check_include
+	fix_include
+fi
+
+#大于两个参数，直接报错
+if [ $# -gt 2 ]; then
+	echo "参数非法！"
+	display_help
+fi
