@@ -1,5 +1,5 @@
-deepin-scanlib (0.0.1-1) unstable; urgency=medium
+deepin-scanlib (0.0.2-1) unstable; urgency=medium
 
-  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+  * Code refactoring, rewriting with CPP
 
- -- zhaozhen <zhaozhen@uniontech.com>  Thu, 01 Jul 2021 10:45:22 +0800
+ -- zhaozhen <zhaozhen@uniontech.com>  Wed, 28 Jul 2021 10:45:22 +0800

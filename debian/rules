@@ -3,9 +3,6 @@
 # output every command that modifies files on the build system.
 export DH_VERBOSE = 1
 
-export COMPATH=$(CURDIR)/include-what-you-use-clang_6.0/build
-export LCPUN=$(shell cat /proc/cpuinfo| grep "processor"| wc -l)
-
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_CFLAGS_MAINT_APPEND  = -Wall -pedantic
 export DEB_CXXFLAGS_MAINT_APPEND  = -Wall -pedantic
@@ -15,25 +12,9 @@ export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 %:
 	dh $@
 
-override_dh_auto_clean:
-	rm -rf $(COMPATH)
-
-override_dh_auto_configure:
-	mkdir $(COMPATH)
-	cd $(COMPATH) && cmake -G "Unix Makefiles" -DIWYU_LLVM_ROOT_PATH=/usr/lib/llvm-6.0 -DCMAKE_INSTALL_PREFIX=/usr ..
-
-override_dh_make:
-	cd $(COMPATH) && make -j$(LCPUN)
-
 override_dh_auto_install:
-	mkdir -p $(CURDIR)/debian/deepin-scanlib/usr/
-	cd $(COMPATH) && make DESTDIR=$(CURDIR)/debian/deepin-scanlib/ install
+	mkdir -p $(CURDIR)/debian/deepin-scanlib/usr/bin/
 	cp $(CURDIR)/deepin-scanlib $(CURDIR)/debian/deepin-scanlib/usr/bin/
 	chmod +x $(CURDIR)/debian/deepin-scanlib/usr/bin/deepin-scanlib
 
 override_dh_auto_test:
-# dh_make generated override targets
-# This is example for Cmake (See https://bugs.debian.org/641051 )
-#override_dh_auto_configure:
-#	dh_auto_configure -- #	-DCMAKE_LIBRARY_PATH=$(DEB_HOST_MULTIARCH)
-
