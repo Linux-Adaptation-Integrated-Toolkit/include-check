@@ -28,14 +28,16 @@ int main(int argc, char** argv) {
 	};
 	//从源码解析为编译单元，并返回报错(如果有)
 	//CXTranslationUnit_Incomplete表示语义分析将被抑制，重点进行#include展开
-	CXTranslationUnit translationUnit = clang_parseTranslationUnit(index, CACppFile.c_str(), args, get_array_num(args), NULL, 0, CXTranslationUnit_Incomplete);
+	CXTranslationUnit translationUnit;
+	CXErrorCode errorCode = clang_parseTranslationUnit2(index, CACppFile.c_str(), args, get_array_num(args), NULL, 0, CXTranslationUnit_Incomplete, &translationUnit);
 	//获取编译单元的报错信息数
 	unsigned diagnosticCount = clang_getNumDiagnostics(translationUnit);
 	//如果编译单元产生报错，收集报错信息，并转为json数据
-	if (diagnosticCount > 0) {
+	if (diagnosticCount > 0 || errorCode != CXError_Success) {
 		//创建一个json结构体，存放报错信息
 		cJSON* include_check = NULL;
 		include_check = cJSON_CreateObject();
+		cJSON_AddNumberToObject(include_check, "error_code", errorCode);
 		for (unsigned i = 0; i < diagnosticCount; ++i) {
 			cJSON* include_check_child = NULL;
 			include_check_child = cJSON_CreateObject();
